@@ -56,7 +56,7 @@ app.post("/api/shorturl/new", function (req, res) {
 app.get("/api/shorturl/:id", function (req, res) {
   
   ShortURL.findById(req.params.id, function (error, urlDoc) {
-    if (!urldoc) return res.status(404).end();
+    if (!urlDoc) return res.status(404).end();
     res.set("Location", urlDoc.url);
     res.status(301).end();
   });
