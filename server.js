@@ -39,7 +39,19 @@ app.get("/api/hello", function (req, res) {
 });
 
 
-
+app.post("/api/shorturl/new", function (req, res) {
+  
+  let urlDoc = new ShortURL({
+    url: req.body.url
+  });
+  
+  urlDoc.save(function (error, data) {
+    res.json({
+      original_url: req.body.url,
+      short_url: data.id
+    });
+  });
+});
 
 
 app.listen(port, function () {
