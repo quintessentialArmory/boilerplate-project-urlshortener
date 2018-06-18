@@ -4,6 +4,7 @@ var express = require('express');
 var mongo = require('mongodb');
 var mongoose = require('mongoose');
 var bodyParser = require('body-parser');
+var dns = require('dns');
 
 var cors = require('cors');
 
@@ -40,15 +41,23 @@ app.get("/api/hello", function (req, res) {
 
 
 app.post("/api/shorturl/new", function (req, res) {
-  
-  let urlDoc = new ShortURL({
-    url: req.body.url
-  });
-  
-  urlDoc.save(function (error, data) {
-    res.json({
-      original_url: req.body.url,
-      short_url: data.id
+
+  dns.lookup(req.body.url, function (lookupError) {
+
+    if (lookupError == 'ENOENT') {
+      res.send('{"error":"invalid URL"}');
+      return;
+    }
+
+    let urlDoc = new ShortURL({
+      url: req.body.url
+    });
+
+    urlDoc.save(function (error, data) {
+      res.json({
+        original_url: req.body.url,
+        short_url: data.id
+      });
     });
   });
 });
