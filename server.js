@@ -5,7 +5,7 @@ var mongo = require('mongodb');
 var mongoose = require('mongoose');
 var bodyParser = require('body-parser');
 var dns = require('dns');
-
+var URL = require('url').URL;
 var cors = require('cors');
 
 var app = express();
@@ -42,9 +42,11 @@ app.get("/api/hello", function (req, res) {
 
 app.post("/api/shorturl/new", function (req, res) {
 
-  dns.lookup(req.body.url, function (lookupError) {
+  dns.lookup(new URL(req.body.url).hostname,
 
-    if (lookupError == 'ENOENT') {
+             function (lookupError, address, family) {
+    
+    if (lookupError) {
       res.send('{"error":"invalid URL"}');
       return;
     }
