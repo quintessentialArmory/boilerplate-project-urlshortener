@@ -13,8 +13,7 @@ var app = express();
 // Basic Configuration 
 var port = process.env.PORT || 3000;
 
-/** this project needs a db !! **/ 
-// mongoose.connect(process.env.MONGOLAB_URI);
+/** this project needs a db !! **/
 mongoose.connect(process.env.MONGO_URI);
 var shortURLSchema = new mongoose.Schema({
   url: {type: String, required: true}
@@ -40,22 +39,22 @@ app.get("/api/hello", function (req, res) {
 });
 
 
-app.post("/api/shorturl/new", function (req, res) {
+app.post("/api/shorturl/new", function (req, res, next) {
 
   dns.lookup(new URL(req.body.url).hostname,
-
              function (lookupError, address, family) {
-    
-    if (lookupError) {
-      res.send('{"error":"invalid URL"}');
-      return;
-    }
 
-    let urlDoc = new ShortURL({
-      url: req.body.url
+    if (lookupError) return next({
+      status: 200,
+      message: 'invalid URL'
     });
 
+    let urlDoc = new ShortURL({url: req.body.url});
+
     urlDoc.save(function (error, data) {
+
+      if (error) return next(error);
+
       res.json({
         original_url: req.body.url,
         short_url: data.id
@@ -64,13 +63,44 @@ app.post("/api/shorturl/new", function (req, res) {
   });
 });
 
-app.get("/api/shorturl/:id", function (req, res) {
+app.get("/api/shorturl/:id", function (req, res, next) {
   
   ShortURL.findById(req.params.id, function (error, urlDoc) {
-    if (!urlDoc) return res.status(404).end();
+
+    if (error) return next(error);
+
+    if (!urlDoc) return next({
+      status: 404,
+      message: "No short url found for given input"
+    });
+
     res.set("Location", urlDoc.url);
     res.status(301).end();
   });
+});
+
+
+// Not found middleware
+app.use((req, res, next) => {
+  return next({status: 404, message: 'not found'});
+});
+
+// Error Handling middleware
+app.use((err, req, res, next) => {
+  let errCode, errMessage;
+
+  if (err.errors) {
+    // mongoose validation error
+    errCode = 400; // bad request
+    const keys = Object.keys(err.errors);
+    // report the first validation error
+    errMessage = err.errors[keys[0]].message;
+  } else {
+    // generic or custom error
+    errCode = err.status || 500;
+    errMessage = err.message || 'Internal Server Error';
+  }
+  res.status(errCode).json({error: errMessage});
 });
 
 
