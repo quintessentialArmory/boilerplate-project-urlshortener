@@ -5,7 +5,8 @@ var mongo = require('mongodb');
 var mongoose = require('mongoose');
 var bodyParser = require('body-parser');
 var dns = require('dns');
-var URL = require('url').URL;
+var urlModule = require('url');
+var URL = urlModule.URL;
 var cors = require('cors');
 
 var app = express();
@@ -41,12 +42,19 @@ app.get("/api/hello", function (req, res) {
 
 app.post("/api/shorturl/new", function (req, res, next) {
 
-  dns.lookup(new URL(req.body.url).hostname,
+  let hostname;
+  try { hostname = new URL(req.body.url).hostname; }
+  catch (e) { return next({
+    status: 200,
+    message: 'invalid URL'
+  })}
+
+  dns.lookup(hostname,
              function (lookupError, address, family) {
 
     if (lookupError) return next({
       status: 200,
-      message: 'invalid URL'
+      message: 'invalid Hostname'
     });
 
     let urlDoc = new ShortURL({url: req.body.url});
@@ -67,7 +75,18 @@ app.get("/api/shorturl/:id", function (req, res, next) {
   
   ShortURL.findById(req.params.id, function (error, urlDoc) {
 
-    if (error) return next(error);
+    if (error) {
+      if (error.name == 'CastError' &&
+          error.kind == 'ObjectId' &&
+          error.path == '_id') {
+        return next({
+          status: 404,
+          message: "No short url found for given input"
+        });
+      }
+
+      return next(error);
+    }
 
     if (!urlDoc) return next({
       status: 404,
